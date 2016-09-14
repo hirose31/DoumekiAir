@@ -1,36 +1,73 @@
 package DoumekiAir;
+
 use strict;
 use warnings;
+use 5.010_000;
 use utf8;
-our $VERSION='0.01';
-use 5.008001;
-use DoumekiAir::DB::Schema;
-use DoumekiAir::DB;
+
+use version; our $VERSION = version->declare('v1.0.0');
+
+use Amon2::Config::Simple;
+use Log::Minimal;
+use Path::Class;
+
+use DoumekiAir::Redis;
+use DoumekiAir::Util;
 
 use parent qw/Amon2/;
 # Enable project local mode.
 __PACKAGE__->make_local_context();
 
-my $schema = DoumekiAir::DB::Schema->instance;
+__PACKAGE__->load_plugins(
+    '+DoumekiAir::Plugin::Model',
+    '+DoumekiAir::Plugin::DataValidator',
+);
 
-sub db {
+if ($ENV{RUN_MODE} && $ENV{RUN_MODE} eq 'development') {
+    eval q!
+      use DBIx::QueryLog;
+      $ENV{LM_DEBUG} = 1;
+      $DBIx::QueryLog::OUTPUT = sub {
+        my %p = @_;
+        debugf("%s", $p{message});
+      };
+    !;
+    warnf($@) if $@;
+}
+
+sub load_config {
     my $c = shift;
-    if (!exists $c->{db}) {
-        my $conf = $c->config->{DBI}
-            or die "Missing configuration about DBI";
-        $c->{db} = DoumekiAir::DB->new(
-            schema       => $schema,
-            connect_info => [@$conf],
-            # I suggest to enable following lines if you are using mysql.
-            # on_connect_do => [
-            #     'SET SESSION sql_mode=STRICT_TRANS_TABLES;',
-            # ],
-        );
+
+    my $config = Amon2::Config::Simple->load($c, {
+        environment => $c->mode_name || 'development',
+    });
+
+    if ($ENV{TEST_REDIS}) {
+        # connect to Test::RedisServer
+        $config->{redis} = {
+            $ENV{TEST_REDIS} =~ m{^/} ? (sock => $ENV{TEST_REDIS}) : (server => $ENV{TEST_REDIS}),
+        };
     }
-    $c->{db};
+
+    debugf 'config: %s', ddf($config);
+    debugf 'data_dir: %s', $config->{data_dir};
+    dir($config->{data_dir})->mkpath(0, oct(2775));
+
+    return $config;
+}
+
+sub redis {
+    my $c = shift;
+    if (!exists $c->{redis}) {
+        my $conf = $c->config->{redis}
+            or die "Missing configuration about Redis";
+        $c->{redis} = DoumekiAir::Redis->new($conf);
+    }
+    $c->{redis};
 }
 
 1;
+
 __END__
 
 =head1 NAME

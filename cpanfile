@@ -15,6 +15,21 @@ requires 'Text::Xslate', '2.0009';
 requires 'Time::Piece', '1.20';
 requires 'perl', '5.010_001';
 
+requires 'Log::Minimal';
+requires 'Path::Class';
+requires 'Class::Accessor::Lite';
+requires 'Redis';
+requires 'Redis::Namespace';
+requires 'Redis::Key';
+requires 'Data::Validator';
+requires 'Data::Validator::Recursive', '0.07';
+requires 'IPC::Cmd';
+requires 'Sub::Retry';
+requires 'Try::Tiny';
+requires 'Parallel::Prefork';
+requires 'Daiku';
+requires 'DBIx::QueryLog';
+
 on configure => sub {
     requires 'Module::Build', '0.38';
     requires 'Module::CPANfile', '0.9010';
@@ -22,4 +37,8 @@ on configure => sub {
 
 on test => sub {
     requires 'Test::More', '0.98';
+    requires 'Harriet';
+    requires 'Test::Pretty';
+    requires 'Test::RedisServer';
+    requires 'Text::SimpleTable';
 };

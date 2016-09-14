@@ -1,0 +1,31 @@
+# -*- mode: perl -*-
+
+desc 'run test';
+task test => sub {
+    my ($task, @args) = @_;
+    sh qw(carton exec -- prove -r t), @args;
+};
+
+desc 'run test with -v option';
+task testv => sub {
+    my ($task, @args) = @_;
+    sh qw(carton exec -- prove -rv t), @args;
+};
+
+# desc 'dump schema';
+# task dump_schema => sub {
+#     require Rainbow::CLI::DumpSchema;
+#     Rainbow::CLI::DumpSchema->run;
+# };
+
+# desc 'dump data';
+# task dump_data => sub {
+#     require Rainbow::CLI::DumpData;
+#     Rainbow::CLI::DumpData->run;
+# };
+
+desc 'release next version';
+task release => sub {
+    require Rainbow::CLI::Release;
+    Rainbow::CLI::Release->run;
+};

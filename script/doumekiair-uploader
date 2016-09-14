@@ -1,0 +1,40 @@
+#!perl
+
+use strict;
+use warnings;
+use 5.010_000;
+use utf8;
+
+use IO::File;
+STDOUT->autoflush(1);
+STDERR->autoflush(1);
+
+use FindBin;
+use File::Spec;
+use lib map {File::Spec->catfile($FindBin::Bin, @$_)} [qw(.. .. lib)];
+
+use DoumekiAir::Worker::Uploader;
+
+MAIN: {
+    my $worker = DoumekiAir::Worker::Uploader->new(
+        max_job_count => 2, # fixme 100とか
+        timeout       => 10,
+    );
+    $worker->run;
+
+    exit 0;
+}
+
+__END__
+
+# for Emacsen
+# Local Variables:
+# mode: cperl
+# cperl-indent-level: 4
+# cperl-close-paren-offset: -4
+# cperl-indent-parens-as-block: t
+# indent-tabs-mode: nil
+# coding: utf-8
+# End:
+
+# vi: set ts=4 sw=4 sts=0 et ft=perl fenc=utf-8 ff=unix :

@@ -1,12 +1,16 @@
-use File::Spec;
-use File::Basename qw(dirname);
-my $basedir = File::Spec->rel2abs(File::Spec->catdir(dirname(__FILE__), '..'));
-my $dbpath = File::Spec->catfile($basedir, 'db', 'development.db');
+use strict;
+
+use Path::Class;
+
+my $root_dir = file(__FILE__)->parent->parent->resolve;
+my $data_dir = $root_dir->subdir('var');
+
 +{
+    'data_dir'         => $data_dir->stringify,
+    'maintenance_file' => '/tmp/maintenance',
     'DBI' => [
-        "dbi:SQLite:dbname=$dbpath", '', '',
-        +{
-            sqlite_unicode => 1,
-        }
     ],
+    'redis' => {
+        server => '127.0.0.1:6479',
+    },
 };

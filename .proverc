@@ -1,3 +1,9 @@
--l
--r t
--Mt::Util
+--exec "env PLACK_ENV=test perl -Ilib -MTest::Pretty -MTest::Name::FromLine"
+-PPretty
+-PHarriet=t/harriet/
+--timer
+--merge
+--trap
+--color
+--failures
+-w

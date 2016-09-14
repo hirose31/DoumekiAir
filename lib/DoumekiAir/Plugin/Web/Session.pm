@@ -1,4 +1,4 @@
-package DoumekiAir::Web::Plugin::Session;
+package DoumekiAir::Plugin::Web::Session;
 use strict;
 use warnings;
 use utf8;
@@ -11,20 +11,22 @@ sub init {
     my ($class, $c) = @_;
 
     # Validate XSRF Token.
-    $c->add_trigger(
-        BEFORE_DISPATCH => sub {
-            my ( $c ) = @_;
-            if ($c->req->method ne 'GET' && $c->req->method ne 'HEAD') {
-                my $token = $c->req->header('X-XSRF-TOKEN') || $c->req->param('XSRF-TOKEN');
-                unless ($c->session->validate_xsrf_token($token)) {
-                    return $c->create_simple_status_page(
-                        403, 'XSRF detected.'
-                    );
+    unless ($ENV{SKIP_XSRF_VALIDATION}) {
+        $c->add_trigger(
+            BEFORE_DISPATCH => sub {
+                my ( $c ) = @_;
+                if ($c->req->method ne 'GET' && $c->req->method ne 'HEAD') {
+                    my $token = $c->req->header('X-XSRF-TOKEN') || $c->req->param('XSRF-TOKEN');
+                    unless ($c->session->validate_xsrf_token($token)) {
+                        return $c->create_simple_status_page(
+                            403, 'XSRF detected.'
+                        );
+                    }
                 }
-            }
-            return;
-        },
-    );
+                return;
+            },
+        );
+    }
 
     Amon2::Util::add_method($c, 'session', \&_session);
 
@@ -42,7 +44,7 @@ sub init {
 
 # $c->session() accessor.
 my $cipher = Crypt::CBC->new({
-    key => 'jXcx0-2R1E3f-LtzF3IgWZ-sNsPNOtHP',
+    key => 'wrA8utcdx3qLt0lIg2zOVpsMRTSba2mI',
     cipher => 'Rijndael',
 });
 sub _session {
@@ -51,7 +53,7 @@ sub _session {
     if (!exists $self->{session}) {
         $self->{session} = HTTP::Session2::ClientStore2->new(
             env => $self->req->env,
-            secret => '9AS60r693nnM0zHGYYoRri_ghanocSJF',
+            secret => 'HIl_xrtUzVz_jVWsLWXxZd3fcDtR-cXY',
             cipher => $cipher,
         );
     }
