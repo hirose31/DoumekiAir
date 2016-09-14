@@ -16,3 +16,6 @@ MYMETA.yml
 /_build/
 /local/
 /.carton/
+/config/*
+!/config/sample.pl
+!/config/test.pl
