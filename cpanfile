@@ -30,6 +30,12 @@ requires 'Parallel::Prefork';
 requires 'Daiku';
 requires 'DBIx::QueryLog';
 
+requires 'HTTP::Parser::XS';
+requires 'Time::TZOffset';
+requires 'Cookie::Baker::XS';
+requires 'WWW::Form::UrlEncoded::XS';
+requires 'JSON::XS';
+
 on configure => sub {
     requires 'Module::Build', '0.38';
     requires 'Module::CPANfile', '0.9010';

@@ -72,7 +72,7 @@ sub run {
     while ($pm->signal_received !~ /^(?:TERM|INT)$/) {
         $pm->start and next;
 
-        debugf($self->job_count.'/'.$self->max_job_count);
+        infof("job done/max=%d/%d", $self->job_count, $self->max_job_count);
 
         my $term = 0;
         LOOP: while (!$term && $self->max_job_count >= $self->{job_count}++) {
@@ -101,10 +101,10 @@ sub run {
                 if ($retval) {
                     infof("finished");
                 } else {
-                    critf("failed");
+                    critff("failed");
                 }
             } catch {
-                critf("error occured: $_");
+                critff("error occured: $_");
             };
         }
 

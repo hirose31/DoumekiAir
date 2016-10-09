@@ -14,7 +14,6 @@ use DoumekiAir::Util;
 
 use parent qw(DoumekiAir::Worker::Base);
 
-#sub queue { join(':', $ENV{RUN_MODE}, 'doumekiair', 'wakeup') }
 sub queue { 'wakeup' }
 
 sub process {
@@ -24,8 +23,39 @@ sub process {
 
     debugf 'job: %s', ddf($job);
 
-    # my $task = $self->c->model('Task')->concrete_task($job->{type});
-    # my $r = $task->setup($job);
+    my $flashair_id = $job;
+    infof 'flashair id: %s', $flashair_id;
+
+    ### fetch list of files
+    my $config = $self->c->config->{flashair}{ $flashair_id };
+    unless (%$config) {
+        croakf 'missing config for %s', $flashair_id;
+    }
+
+    my $flashair = $self->c->model('FlashAir', {
+        id => $flashair_id,
+        %$config,
+    });
+    # fixme フィルタリングもfilelistでやる？
+    my @files = $flashair->filelist();
+
+    # fixme
+    # for my $file (@files) {
+    #     $flashair->fetch({
+    #         file => $file,
+    #         callback => sub {
+    #             $self->c->model('Store')->store({
+    #                 file => $file,
+    #             });
+    #         },
+    #     });
+    # }
+
+    ### store
+    # $self->c->model('Store')->store({
+    #     id => $flashair_id,
+    # });
+
     my $r = 1;
 
     infof "end   job";
