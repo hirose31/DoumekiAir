@@ -36,29 +36,42 @@ sub process {
         return;
     }
 
-    p $mres->content;
+    my $filelist = $mres->content;
 
-    # fixme
-    # for my $file (@files) {
-    #     $flashair->fetch({
-    #         file => $file,
-    #         callback => sub {
-    #             $self->c->model('Store')->store({
-    #                 file => $file,
-    #             });
-    #         },
-    #     });
-    # }
+    my $store = $self->c->model('Store');
+    $store->login();
 
-    ### store
-    # $self->c->model('Store')->store({
-    #     id => $flashair_id,
-    # });
+    for my $fileinfo (@$filelist) {
+        next unless uploadable($fileinfo);
+
+        $mres = $flashair->fetch({
+            fileinfo => $fileinfo,
+            callback => sub {
+                my($object) = @_;
+                return $store->store({
+                    object => $object,
+                });
+            },
+        });
+
+        if ($mres->has_errors) {
+            warnf 'failed to fetch and upload: %s', ddf($mres);
+            next;
+        }
+
+        # fixme mark as uploaded
+    }
 
     my $r = 1;
 
     infof "end   job";
     return $r ? 1 : ();
+}
+
+sub uploadable {
+    my $fileinfo = shift;
+
+    return $fileinfo->{filename} =~ /(?:jpe?g)$/i ? 1 : ();
 }
 
 1;

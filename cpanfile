@@ -35,6 +35,7 @@ requires 'Time::TZOffset';
 requires 'Cookie::Baker::XS';
 requires 'WWW::Form::UrlEncoded::XS';
 requires 'JSON::XS';
+requires 'Image::ExifTool';
 
 on configure => sub {
     requires 'Module::Build', '0.38';

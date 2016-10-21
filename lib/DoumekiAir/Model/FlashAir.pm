@@ -10,6 +10,7 @@ use Log::Minimal;
 use JSON qw(encode_json decode_json);
 use Furl;
 use Try::Tiny;
+use Image::ExifTool;
 
 use DoumekiAir::ModelResponse;
 use DoumekiAir::ModelTypeConstraints;
@@ -186,6 +187,58 @@ sub is_archive {
     my $attr = shift;
 
     return ($attr & $F_ARCHIVE) ? 1 : ();
+}
+
+sub fetch {
+    my $self = shift;
+    debugf 'fetch [%s]', $self->id;
+
+    state $rule = $self->c->validator(
+        fileinfo => { isa => 'HashRef' },
+        callback => { isa => 'CodeRef' },
+    )->with('NoThrow');
+
+    my $param = $rule->validate(@_);
+
+    my $mres = DoumekiAir::ModelResponse->new;
+    if ($rule->has_errors) {
+        $mres->add_validator_errors($rule->clear_errors);
+        return $mres;
+    }
+
+    my $url = sprintf("%s%s",
+                      $self->url,
+                      $param->{fileinfo}{filename},
+                  );
+    debugf 'url: %s', $url;
+    my $res = $self->ua->get($url);
+    debugf 'status_line: %s', $res->status_line;
+    if (!$res->is_success) {
+        $mres->add_error({
+            field   => 'fetch',
+            code    => 'error',
+            message => $res->status_line,
+        });
+        return $mres;
+    }
+
+    my $object = {
+        %{ $param->{fileinfo} },
+        content        => $res->decoded_content,
+        type           => $res->content_type,
+        shoot_datetime => '',
+    };
+    if ($object->{type} eq 'image/jpeg') {
+        my $exif = Image::ExifTool->ImageInfo(\$object->{content});
+        if ($exif->{DateTimeOriginal}) {
+            my($date, $time) = split /\s+/, $exif->{DateTimeOriginal};
+            $object->{shoot_datetime} = sprintf '%04d-%02d-%02d %s', (split /[:\/-]/, $date), $time;
+        }
+    }
+
+    $mres = $param->{callback}->($object);
+
+    return $mres;
 }
 
 1;
