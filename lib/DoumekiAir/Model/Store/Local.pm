@@ -7,12 +7,14 @@ use utf8;
 
 use Carp;
 use Log::Minimal;
+use Path::Class;
+use File::Basename;
 
 use DoumekiAir::Util;
 
 use Class::Accessor::Lite (
     new => 0,
-    ro  => [qw(c)]
+    ro  => [qw(c base_dir umask)]
 );
 
 sub new {
@@ -38,8 +40,23 @@ sub login {
 }
 
 sub store {
-    my($self) = @_;
+    my($self, %param) = @_;
     infof 'store %s', __PACKAGE__;
+
+    my $object = $param{object};
+
+    CORE::umask oct($self->umask);
+
+    my $datetime = $object->{shoot_datetime} || $object->{datetime};
+    my $date = (split /\s+/, $datetime)[0];
+    my $year = (split /-/, $date)[0];
+    my $filename = basename($object->{filename});
+    debugf 'datetime %s %s %s %s', $datetime, $date, $year, $filename;
+
+    my $file = dir($self->base_dir, $year, $date)->file($filename);
+    $file->dir->mkpath;
+    infof 'write to %s', $file->stringify;
+    $file->spew($object->{content});
 }
 
 1;
