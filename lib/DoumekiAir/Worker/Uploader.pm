@@ -18,26 +18,25 @@ sub queue { 'wakeup' }
 
 sub process {
     my($self, $job) = @_;
+    my $mres;
 
-    infof "start job";
-
-    debugf 'job: %s', ddf($job);
+    infof "start job: %s", ddf($job);
 
     my $flashair_id = $job;
     infof 'flashair id: %s', $flashair_id;
 
     ### fetch list of files
-    my $config = $self->c->config->{flashair}{ $flashair_id };
-    unless (%$config) {
-        croakf 'missing config for %s', $flashair_id;
-    }
-
     my $flashair = $self->c->model('FlashAir', {
         id => $flashair_id,
-        %$config,
     });
     # fixme フィルタリングもfilelistでやる？
-    my @files = $flashair->filelist();
+    my $mres = $flashair->filelist();
+    if ($mres->has_errors) {
+        warnf 'failed to get filelist: %s', ddf($mres);
+        return;
+    }
+
+    p $mres->content;
 
     # fixme
     # for my $file (@files) {
