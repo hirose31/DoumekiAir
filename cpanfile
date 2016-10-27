@@ -36,6 +36,8 @@ requires 'Cookie::Baker::XS';
 requires 'WWW::Form::UrlEncoded::XS';
 requires 'JSON::XS';
 requires 'Image::ExifTool';
+requires 'XML::LibXML';
+requires 'Net::Google::DataAPI::Auth::OAuth2';
 
 on configure => sub {
     requires 'Module::Build', '0.38';
