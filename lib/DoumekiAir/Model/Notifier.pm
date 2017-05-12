@@ -63,7 +63,7 @@ sub notify {
         message => { isa => 'Str' },
     )->with('NoThrow');
 
-    my $param = $rule->validate(%$param);
+    $param = $rule->validate(%$param);
 
     if ($rule->has_errors) {
         $mres->add_validator_errors($rule->clear_errors);

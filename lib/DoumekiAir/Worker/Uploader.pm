@@ -33,7 +33,7 @@ sub process {
     my $flashair = $self->c->model('FlashAir', {
         id => $flashair_id,
     });
-    # fixme フィルタリングもfilelistでやる？
+
     my $mres = $flashair->filelist();
     if ($mres->has_errors) {
         warnf 'failed to get filelist: %s', ddf($mres);
@@ -45,8 +45,11 @@ sub process {
     my $store = $self->c->model('Store');
     $store->login();
 
+    my $upm = $self->c->model('UploadedMemo');
+
     for my $fileinfo (@$filelist) {
         next unless uploadable($fileinfo);
+        next if $upm->is_uploaded(%$fileinfo);
 
         $mres = $flashair->fetch({
             fileinfo => $fileinfo,
@@ -63,7 +66,7 @@ sub process {
             next;
         }
 
-        # fixme mark as uploaded
+        $upm->uploaded(%$fileinfo);
     }
 
     my $r = 1;
