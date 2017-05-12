@@ -18,7 +18,7 @@ use DoumekiAir::Worker::Uploader;
 MAIN: {
     my $worker = DoumekiAir::Worker::Uploader->new(
         max_workers   => 1,
-        max_job_count => 2, # fixme 100とか
+        max_job_count => 17,
         timeout       => 10,
     );
     $worker->run;
