@@ -10,6 +10,7 @@ use version; our $VERSION = version->declare('v1.0.0');
 use Amon2::Config::Simple;
 use Log::Minimal;
 use Path::Class;
+use Furl;
 
 use DoumekiAir::Redis;
 use DoumekiAir::Util;
@@ -54,6 +55,17 @@ sub load_config {
     dir($config->{data_dir})->mkpath(0, oct(2775));
 
     return $config;
+}
+
+sub ua {
+    my $c = shift;
+    if (!exists $c->{ua}) {
+        $c->{ua} = Furl->new(
+            timeout => 60,
+            agent => join('/', __PACKAGE__, $VERSION),
+        );
+    }
+    $c->{ua};
 }
 
 sub redis {

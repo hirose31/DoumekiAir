@@ -19,8 +19,12 @@ sub queue { 'wakeup' }
 sub process {
     my($self, $job) = @_;
     my $mres;
+    my $msg;
 
-    infof "start job: %s", ddf($job);
+    my $notifier = $self->c->model('Notifier');
+    $msg = sprintf "start job: %s", ddf($job);
+    infof $msg;
+    $notifier->notify(message => $msg);
 
     my $flashair_id = $job;
     infof 'flashair id: %s', $flashair_id;
@@ -64,7 +68,10 @@ sub process {
 
     my $r = 1;
 
-    infof "end   job";
+    $msg = sprintf "end   job (%s)", $r ? 'successfully' : 'failed';
+    infof $msg;
+    $notifier->notify(message => $msg);
+
     return $r ? 1 : ();
 }
 
