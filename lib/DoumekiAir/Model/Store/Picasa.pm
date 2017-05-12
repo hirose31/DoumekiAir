@@ -43,6 +43,7 @@ sub new {
         %param,
         ua           => '', # set in login
         access_token => '',
+        album_list   => {},
     }, $class;
 
     return $self;
@@ -69,8 +70,11 @@ sub login {
     $self->access_token($token->access_token);
 
     $self->{ua} = Furl->new(
-        headers => [ 'Authorization' => sprintf('OAuth %s', $self->access_token) ],
-        timeout => 17,
+        headers => [
+            'Authorization' => sprintf('OAuth %s', $self->access_token),
+            'GData-Version' => 3,
+        ],
+        timeout => 60,
     );
 
     $self->_build_album_list;
@@ -89,7 +93,7 @@ sub store {
     my $filename = basename($object->{filename});
     debugf 'datetime %s %s %s', $datetime, $date, $filename;
 
-    my $upload_uri = $self->new_album($date);
+    my $upload_uri = $self->upload_uri($date);
     if (!$upload_uri) {
         $upload_uri = 'https://picasaweb.google.com/data/feed/api/user/default';
     }
@@ -97,7 +101,6 @@ sub store {
 
     my $res = $self->ua->post($upload_uri,
                               [
-                                  'GData-Version' => '2',
                                   'Content-Type'  => 'image/jpg',
                                   'Slug'          => $filename,
                               ],
@@ -127,17 +130,17 @@ sub _build_album_list {
     $xpc->registerNs('atom','http://www.w3.org/2005/Atom');
 
     my $nodes = $xpc->findnodes('//atom:entry');
-    debugf 'nodes: %s', $nodes->size;
+    #debugf 'nodes: %s', $nodes->size;
     for my $node ($nodes->get_nodelist) {
         my $title_node = $node->getElementsByTagName('title')->get_node(1);
         my $albumname = $title_node->textContent;
         utf8::encode($albumname);
-        debugf 'album name: %s', $albumname;
+        #debugf 'album name: %s', $albumname;
 
         my @links = $node->getElementsByTagName('link')->get_nodelist;
         for my $link (@links) {
             if ($link->getAttribute('rel') eq 'http://schemas.google.com/g/2005#feed') {
-                debugf 'found: %s', $link->getAttribute('href');
+                #debugf 'found: %s', $link->getAttribute('href');
                 $album_list->{ $albumname } = $link->getAttribute('href');
                 last;
             }
@@ -147,48 +150,12 @@ sub _build_album_list {
     $self->{album_list} = $album_list;
 }
 
-sub new_album {
-    my($self, $albumname) = @_;
+sub upload_uri {
+    my($self, $date) = @_;
+
+    my($albumname) = $date =~ /^(\d\d\d\d)/;
 
     my $upload_uri = $self->album_list->{$albumname} || "";
-
-    if (!$upload_uri) {
-        my $request_body = q{<entry xmlns='http://www.w3.org/2005/Atom'
-    xmlns:media='http://search.yahoo.com/mrss/'
-    xmlns:gphoto='http://schemas.google.com/photos/2007'>
-  <title type='text'>%s</title>
-  <gphoto:access>%s</gphoto:access>
-  <category scheme='http://schemas.google.com/g/2005#kind'
-    term='http://schemas.google.com/photos/2007#album'></category>
-</entry>
-};
-        my $uri = 'https://picasaweb.google.com/data/feed/api/user/default';
-        my $res = $self->ua->post(
-            $uri,
-            [
-                'Content-Type'  => 'application/atom+xml',
-            ],
-            sprintf($request_body,
-                    $albumname,
-                    $self->album_access,
-                ),
-        );
-        $res->code eq '201' or croak "failed to create album: $!: ".$res->code.' '.$res->content;
-        infof 'create album: %s (%s)', $albumname, $self->album_access;
-
-        my $dom = XML::LibXML->load_xml(string => $res->content);
-        my @links = $dom->getElementsByTagName('link');
-        for my $link (@links) {
-            if ($link->getAttribute('rel') eq 'http://schemas.google.com/g/2005#feed') {
-                $upload_uri = $link->getAttribute('href');
-                last;
-            }
-        }
-
-        if ($upload_uri) {
-            $self->album_list->{$albumname} = $upload_uri;
-        }
-    }
 
     return $upload_uri;
 }
