@@ -34,7 +34,7 @@ sub process {
         id => $flashair_id,
     });
 
-    my $mres = $flashair->filelist();
+    $mres = $flashair->filelist();
     if ($mres->has_errors) {
         warnf 'failed to get filelist: %s', ddf($mres);
         return;
