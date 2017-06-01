@@ -19,3 +19,8 @@ MYMETA.yml
 /config/*
 !/config/sample.pl
 !/config/test.pl
+
+/service/*/env/*
+!/service/*/env/.gitkeep
+/service/*/log/*
+!/service/*/log/run

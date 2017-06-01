@@ -1,0 +1,15 @@
+#!/bin/sh
+exec 2>&1
+
+run_file=$(readlink -f $0)
+run_dir=${run_file%/*}
+
+export APP_BASE=$(readlink -f $run_dir/../../)
+
+exec setuidgid hirose31 \
+     env - PATH="/usr/local/bin:$PATH" \
+     envdir ./env \
+     carton exec -- \
+     perl -I$APP_BASE/lib $APP_BASE/script/doumekiair-uploader \
+;
+
