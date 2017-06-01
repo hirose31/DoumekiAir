@@ -7,6 +7,7 @@ use utf8;
 
 use Carp;
 use Data::Validator;
+use Data::Dumper;
 
 use Class::Accessor::Lite (
     new => 0,
@@ -17,10 +18,10 @@ use Class::Accessor::Lite (
 sub new {
     my($class, %args) = @_;
 
-    my $self = bless {
+    my $self    =  bless {
         %args,
-        content  => undef,
-        errors   => [],
+        content => undef,
+        errors  => [],
     }, $class;
 
     return $self;
@@ -41,11 +42,13 @@ sub add_validator_errors {
         UnknownParameter   => 'invalid',
     };
 
+    $self->content('validation failed');
+
     for my $e (@$errors) {
         $self->add_error({
-            field    => $e->{name},
-            code     => ($code_by_type->{ $e->{type} } // 'invalid'),
-            message  => $e->{message},
+            field   => $e->{name},
+            code    => ($code_by_type->{ $e->{type} } // 'invalid'),
+            message => $e->{message},
         });
     }
 }
@@ -53,10 +56,10 @@ sub add_validator_errors {
 sub add_error {
     my($self, $error) = @_;
 
-    my $rule = Data::Validator->new(
-        field    => { isa => 'Str' },
-        code     => { isa => 'Str' },
-        message  => { isa => 'Str', optional => 1 },
+    my $rule    =  Data::Validator->new(
+        field   => { isa => 'Str' },
+        code    => { isa => 'Str' },
+        message => { isa => 'Str', optional => 1 },
     )->with('NoThrow');
 
     $error = $rule->validate(%$error);
@@ -70,6 +73,20 @@ sub add_error {
     } else {
         push @{ $self->{errors} }, $error;
     }
+}
+
+sub as_string {
+    my($self) = @_;
+
+    local $Data::Dumper::Indent    = 1;
+    local $Data::Dumper::Deepcopy  = 1;
+    local $Data::Dumper::Sortkeys  = 1;
+    local $Data::Dumper::Terse     = 1;
+    local $Data::Dumper::Useqq     = 1;
+    local $Data::Dumper::Quotekeys = 0;
+    my $d =  Dumper($_[0]);
+    $d    =~ s/\\x\{([0-9a-z]+)\}/chr(hex($1))/ge;
+    return $d;
 }
 
 1;
@@ -97,5 +114,18 @@ B<DoumekiAir::ModelResponse> - ...
 なので、例えばTagモデルのidやnameメソッドの返り値には使わない。
 
 別な言い方をすると、コントローラがモデルのエラーの詳細を知りたい局面では ModelResponse を返るが、モデルのユーティリティメソッドには使わない。
+
+=head1 STRUCTURE
+
+    content => Any
+      正常系の場合は任意の型のデータ
+      異常系はエラーメッセージ:Str
+    errors  => ArrayRef[ERROR]
+    
+    ERROR = {
+      field   => エラー起因のパラメータやモデルの名前
+      code    => missing | missing_field | invalid | already_exists | fatal
+      message => Str (optional)
+    }
 
 =cut

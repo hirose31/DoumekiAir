@@ -1,0 +1,37 @@
+#!/bin/sh
+exec 2>&1
+
+### common preparation
+run_file=$(readlink -f $0)
+run_dir=${run_file%/*}
+
+export APP_BASE=$(readlink -f $run_dir/../../)
+
+export ENVDIR="${run_dir}/env"
+
+# open files
+ulimit -n 32768
+
+exec setuidgid hirose31 \
+  sh -c '\
+    exec \
+      start_server \
+      --port 5010 \
+      --signal-on-term=TERM \
+      --signal-on-hup=USR1 \
+      --interval=10 \
+      -- \
+      envdir $ENVDIR \
+      sh -c "exec \
+        carton exec -- \
+        plackup \
+          -s Starlet \
+          -I $APP_BASE \
+          --access-log /dev/null \
+          --max-workers \${STARLET_MAX_WORKERS:-16} \
+          --max-reqs-per-child \${STARLET_MAX_REQS_PER_CHILD:-1024} \
+          --min-reqs-per-child \${STARLET_MIN_REQS_PER_CHILD:-512} \
+          --spawn-interval \${STARLET_SPAWN_INTERVAL:-1} \
+          $APP_BASE/script/doumekiair-server \
+"
+'
