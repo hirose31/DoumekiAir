@@ -19,15 +19,17 @@ use Class::Accessor::Lite (
 );
 
 sub new {
-    my($class, %param) = @_;
-    state $rule = $param{c}->validator(
-        c  => { isa => 'DoumekiAir' },
-    )->with('Method');
+    my $class = shift;
+    my $param = +{ @_ };
 
-    $rule->validate(@_);
+    state $rule = $param->{c}->validator(
+        c  => { isa => 'DoumekiAir' },
+    )->with('NoRestricted');
+
+    $param = $rule->validate($param);
 
     my $self = bless {
-        %param,
+        %$param,
         store => [],
     }, $class;
 
@@ -70,7 +72,7 @@ sub store {
         object => { isa => 'HashRef' },
     )->with('NoThrow');
 
-    $param = $rule->validate(%$param);
+    $param = $rule->validate($param);
 
     if ($rule->has_errors) {
         $mres->add_validator_errors($rule->clear_errors);

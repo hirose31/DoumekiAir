@@ -24,7 +24,7 @@ sub process {
     my $notifier = $self->c->model('Notifier');
     $msg = sprintf "start job: %s", ddf($job);
     infof $msg;
-    $notifier->notify(message => $msg);
+    $notifier->notify({message => $msg});
 
     my $flashair_id = $job;
     infof 'flashair id: %s', $flashair_id;
@@ -49,7 +49,7 @@ sub process {
 
     for my $fileinfo (@$filelist) {
         next unless uploadable($fileinfo);
-        next if $upm->is_uploaded(%$fileinfo);
+        next if $upm->is_uploaded($fileinfo);
 
         $mres = $flashair->fetch({
             fileinfo => $fileinfo,
@@ -66,14 +66,14 @@ sub process {
             next;
         }
 
-        $upm->uploaded(%$fileinfo);
+        $upm->uploaded($fileinfo);
     }
 
     my $r = 1;
 
     $msg = sprintf "end   job (%s)", $r ? 'successfully' : 'failed';
     infof $msg;
-    $notifier->notify(message => $msg);
+    $notifier->notify({message => $msg});
 
     return $r ? 1 : ();
 }

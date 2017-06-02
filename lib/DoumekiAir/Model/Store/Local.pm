@@ -18,17 +18,19 @@ use Class::Accessor::Lite (
 );
 
 sub new {
-    my($class, %param) = @_;
-    state $rule = $param{c}->validator(
+    my $class = shift;
+    my $param = +{ @_ };
+
+    state $rule = $param->{c}->validator(
         c        => { isa => 'DoumekiAir' },
         base_dir => { isa => 'Str' },
         umask    => { isa => 'Str', default => '0002' },
-    )->with('Method');
+    )->with('NoRestricted');
 
-    $rule->validate(@_);
+    $param = $rule->validate($param);
 
     my $self = bless {
-        %param,
+        %$param,
     }, $class;
 
     return $self;

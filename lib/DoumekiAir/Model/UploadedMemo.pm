@@ -32,8 +32,7 @@ sub ident {
 }
 
 sub is_uploaded {
-    my $self = shift;
-    my $param = +{ @_ };
+    my($self, $param) = @_;
 
     my $rule = $self->c->validator(
         filename => { isa => 'Str' },
@@ -41,7 +40,7 @@ sub is_uploaded {
         datetime => { isa => 'Str' },
     )->with('NoThrow');
 
-    $param = $rule->validate(%$param);
+    $param = $rule->validate($param);
 
     if ($rule->has_errors) {
         critf 'failed to validate: %s', ddf($rule->clear_errors);
@@ -59,8 +58,7 @@ sub is_uploaded {
 }
 
 sub uploaded {
-    my $self = shift;
-    my $param = +{ @_ };
+    my($self, $param) = @_;
 
     my $rule = $self->c->validator(
         filename => { isa => 'Str' },
@@ -68,7 +66,7 @@ sub uploaded {
         datetime => { isa => 'Str' },
     )->with('NoThrow');
 
-    $param = $rule->validate(%$param);
+    $param = $rule->validate($param);
 
     if ($rule->has_errors) {
         critf 'failed to validate: %s', ddf($rule->clear_errors);

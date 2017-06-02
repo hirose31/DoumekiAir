@@ -16,15 +16,17 @@ use Class::Accessor::Lite (
 );
 
 sub new {
-    my($class, %param) = @_;
-    state $rule = $param{c}->validator(
-        c  => { isa => 'DoumekiAir' },
-    )->with('Method');
+    my $class = shift;
+    my $param = +{ @_ };
 
-    $rule->validate(@_);
+    state $rule = $param->{c}->validator(
+        c  => { isa => 'DoumekiAir' },
+    )->with('NoRestricted');
+
+    $param = $rule->validate($param);
 
     my $self = bless {
-        %param,
+        %$param,
     }, $class;
 
     return $self;

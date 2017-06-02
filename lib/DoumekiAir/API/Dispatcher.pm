@@ -108,83 +108,14 @@ get '/v1/capability' => sub {
 };
 
 ### users ##################################################################
-get '/v1/search/users' => sub {
+get '/wakeup/:flashair_id' => sub {
     my($c, $args) = @_;
 
-    my $param = $c->parse_json_qs_request
-        or return $c->show_bad_request(
-            'failed to parse JSON' => [{code => 'invalid'}],
-        );
-
-    my $mres = $c->model('User')->search($param);
+    my $mres = $c->model('FlashAir', { id => $args->{flashair_id} })->wakeup;
 
     return $mres->has_errors
         ? $c->show_mres_error($mres)
         : $c->render_json($mres->content);
-};
-
-get '/v1/users/:user_name' => sub {
-    my($c, $args) = @_;
-
-    my $param = $c->parse_json_qs_request
-        or return $c->show_bad_request(
-            'failed to parse JSON' => [{code => 'invalid'}],
-        );
-
-    my $mres = $c->model('User')->fetch({
-        name => $args->{user_name},
-    });
-
-    return $mres->has_errors
-        ? $c->show_mres_error($mres)
-        : scalar(@{ $mres->content }) != 1
-          ? $c->show_internal_server_error('got several results')
-          : $c->render_json($mres->content->[0]);
-};
-
-post '/v1/users' => sub {
-    my($c, $args) = @_;
-
-    my $param = $c->parse_json_request
-        or return $c->show_bad_request(
-            'failed to parse JSON' => [{code => 'invalid'}],
-        );
-
-    my $mres = $c->model('User')->insert($param);
-
-    return $mres->has_errors
-        ? $c->show_mres_error($mres)
-        : $c->render_json($mres->content, 201);
-};
-
-put '/v1/users/:user_name' => sub {
-    my($c, $args) = @_;
-
-    my $param = $c->parse_json_request
-        or return $c->show_bad_request(
-            'failed to parse JSON' => [{code => 'invalid'}],
-        );
-
-    my $mres = $c->model('User')->update({
-        %$param,
-        key => $args->{user_name},
-    });
-
-    return $mres->has_errors
-        ? $c->show_mres_error($mres)
-        : $c->render_json($mres->content);
-};
-
-delete_ '/v1/users/:user_name' => sub {
-    my($c, $args) = @_;
-
-    my $mres = $c->model('User')->delete({ name => $args->{user_name} });
-
-    return $mres->has_errors
-        ? $c->show_mres_error($mres)
-        : $mres->content == 0
-          ? $c->render_json({}, 404)
-          : $c->render_json({}, 204);
 };
 
 1;

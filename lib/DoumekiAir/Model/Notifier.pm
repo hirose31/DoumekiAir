@@ -19,15 +19,17 @@ use Class::Accessor::Lite (
 );
 
 sub new {
-    my($class, %param) = @_;
-    state $rule = $param{c}->validator(
-        c  => { isa => 'DoumekiAir' },
-    )->with('Method');
+    my $class = shift;
+    my $param = +{ @_ };
 
-    $rule->validate(@_);
+    state $rule = $param->{c}->validator(
+        c  => { isa => 'DoumekiAir' },
+    )->with('NoRestricted');
+
+    $param = $rule->validate($param);
 
     my $self = bless {
-        %param,
+        %$param,
         notifier => [],
     }, $class;
 
@@ -54,8 +56,7 @@ sub load {
 }
 
 sub notify {
-    my $self = shift;
-    my $param = +{ @_ };
+    my($self, $param) = @_;
 
     my $mres = DoumekiAir::ModelResponse->new;
 
@@ -63,7 +64,7 @@ sub notify {
         message => { isa => 'Str' },
     )->with('NoThrow');
 
-    $param = $rule->validate(%$param);
+    $param = $rule->validate($param);
 
     if ($rule->has_errors) {
         $mres->add_validator_errors($rule->clear_errors);

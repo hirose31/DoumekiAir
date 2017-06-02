@@ -30,43 +30,23 @@ sub enqueue {
     my $mres = DoumekiAir::ModelResponse->new;
 
     my $rule = $self->c->validator(
-        queue => { isa => 'Str' },
+        queue       => { isa => 'Str' },
+        flashair_id => { isa => 'Str' },
     )->with('NoThrow');
 
-    $param = $rule->validate(%$param);
+    $param = $rule->validate($param);
 
     if ($rule->has_errors) {
         $mres->add_validator_errors($rule->clear_errors);
         return $mres;
     }
 
-    croak 'not implemented';
-    # my $queue  = $self->c->redis->key('queue' => $param);
+    my $queue  = $self->c->redis->key($param->{queue});
+    $queue->rpush($param->{flashair_id});
 
-    # ### begin transaction
-    # $task->multi;
+    $mres->content('OK');
 
-    # # queue
-    # $queue->rpush(encode_json(\%task_data));
-
-    # ### commit transaction
-    # $task->exec;
-
-    # $mres = $self->status({
-    #     service  => $param->{service},
-    #     hostname => $param->{hostname},
-    #     type     => $param->{type},
-    # });
-    # if ($mres->has_errors) {
-    #     $mres->add_error({
-    #         message => "failed to get task info for $key",
-    #         field   => 'task',
-    #         code    => 'invalid',
-    #     });
-    #     return $mres;
-    # }
-
-    # return $mres;
+    return $mres;
 }
 
 sub dequeue {
@@ -79,7 +59,7 @@ sub dequeue {
         timeout => { isa => 'Int', default => 0 },
     )->with('NoThrow');
 
-    $param = $rule->validate(%$param);
+    $param = $rule->validate($param);
 
     if ($rule->has_errors) {
         $mres->add_validator_errors($rule->clear_errors);

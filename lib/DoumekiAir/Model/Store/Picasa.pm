@@ -22,8 +22,10 @@ use Class::Accessor::Lite (
 );
 
 sub new {
-    my($class, %param) = @_;
-    state $rule = $param{c}->validator(
+    my $class = shift;
+    my $param = +{ @_ };
+
+    state $rule = $param->{c}->validator(
         c             => { isa => 'DoumekiAir' },
         client_id     => { isa => 'Str' },
         client_secret => { isa => 'Str' },
@@ -35,12 +37,12 @@ sub new {
         # の gphoto:access
         # でも private だと「共有中」って表示されるので protected にする。
         album_access => { isa => 'Str', default => 'protected' },
-    )->with('Method');
+    )->with('NoRestricted');
 
-    %param = %{ $rule->validate(@_) };
+    $param = $rule->validate($param);
 
     my $self = bless {
-        %param,
+        %$param,
         ua           => '', # set in login
         access_token => '',
         album_list   => {},

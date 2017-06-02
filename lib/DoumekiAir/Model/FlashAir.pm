@@ -37,21 +37,23 @@ my $MASK_MIN  = 0x07E0;
 my $MASK_HOUR = 0xF800;
 
 sub new {
-    my($class, %param) = @_;
-    state $rule = $param{c}->validator(
+    my $class = shift;
+    my $param = +{ @_ };
+
+    state $rule = $param->{c}->validator(
         id => { isa => 'Str' },
         c  => { isa => 'DoumekiAir' },
-    )->with('Method');
+    )->with('NoRestricted');
 
-    $rule->validate(@_);
+    $param = $rule->validate($param);
 
-    my $config = $param{c}->config->{flashair}{ $param{id} };
+    my $config = $param->{c}->config->{flashair}{ $param->{id} };
     unless (%$config) {
-        croakf 'missing config for %s', $param{id};
+        croakf 'missing config for %s', $param->{id};
     }
 
     my $self = bless {
-        %param,
+        %$param,
         %$config,
         ua => Furl->new(
             timeout => 16,
@@ -63,26 +65,47 @@ sub new {
     return $self;
 }
 
-sub filelist {
-    my $self = shift;
-    debugf 'filelist [%s]', $self->id;
+sub wakeup {
+    my($self, $param) = @_;
 
-    state $rule = $self->c->validator(
-
-    )->with('NoThrow');
-
-    my $param = $rule->validate(@_);
+    infof 'id: %s', $self->id;
 
     my $mres = DoumekiAir::ModelResponse->new;
-    if ($rule->has_errors) {
-        $mres->add_validator_errors($rule->clear_errors);
-        return $mres;
+
+    $mres = $self->c->model('Queue')->enqueue({
+        queue       => 'wakeup',
+        flashair_id => $self->id,
+    });
+
+    if ($mres->has_errors) {
+        $mres->content({ status => 'error'});
+    } else {
+        $mres->content({ status => 'enqueue'});
     }
+
+    return $mres;
+}
+
+sub filelist {
+    my($self, $param) = @_;
+    debugf 'filelist [%s]', $self->id;
+
+    # state $rule = $self->c->validator(
+    #
+    # )->with('NoThrow');
+
+    # $param = $rule->validate($param);
+
+    my $mres = DoumekiAir::ModelResponse->new;
+    # if ($rule->has_errors) {
+    #     $mres->add_validator_errors($rule->clear_errors);
+    #     return $mres;
+    # }
 
 
     my @filelist;
     try {
-        @filelist = $self->_fetch_filelist(dir => '/');
+        @filelist = $self->_fetch_filelist({dir => '/'});
     } catch {
         $mres->add_error({
             field   => 'fetch_filelist',
@@ -98,13 +121,13 @@ sub filelist {
 }
 
 sub _fetch_filelist {
-    my $self = shift;
+    my($self, $param) = @_;
 
     state $rule = Data::Validator->new(
         dir => { isa => 'Str' },
     );
 
-    my $param = $rule->validate(@_);
+    $param = $rule->validate($param);
 
     my $url = sprintf("%s/command.cgi?op=100&DIR=%s",
                       $self->url,
@@ -125,7 +148,7 @@ sub _fetch_filelist {
         my($dir,$name,$size,$attr,$date,$time) = split /,/, $line;
 
         if (is_dir($attr)) {
-            push @filelist, $self->_fetch_filelist(dir => join('/', $dir, $name));
+            push @filelist, $self->_fetch_filelist({dir => join('/', $dir, $name)});
         } else {
             if ($size <= 0) {
                 debugf 'SKIP %s: size is 0', $name;
@@ -190,7 +213,7 @@ sub is_archive {
 }
 
 sub fetch {
-    my $self = shift;
+    my($self, $param) = @_;
     debugf 'fetch [%s]', $self->id;
 
     state $rule = $self->c->validator(
@@ -198,7 +221,7 @@ sub fetch {
         callback => { isa => 'CodeRef' },
     )->with('NoThrow');
 
-    my $param = $rule->validate(@_);
+    $param = $rule->validate($param);
 
     my $mres = DoumekiAir::ModelResponse->new;
     if ($rule->has_errors) {
