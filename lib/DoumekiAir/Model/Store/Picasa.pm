@@ -12,6 +12,7 @@ use File::Basename;
 use XML::LibXML;
 use Net::Google::DataAPI::Auth::OAuth2;
 use Furl;
+use Sub::Retry;
 
 use DoumekiAir::Util;
 
@@ -101,16 +102,20 @@ sub store {
     }
     debugf 'upload_uri: %s', $upload_uri;
 
-    my $res = $self->ua->post($upload_uri,
-                              [
-                                  'Content-Type'  => 'image/jpg',
-                                  'Slug'          => $filename,
-                              ],
-                              $object->{content},
-                          );
-
-    infof 'uploaded: %s/%s', $date, $filename;
-    if ($res->is_success) {
+    my $res = retry 3, 1, sub {
+        return $self->ua->post($upload_uri,
+                               [
+                                   'Content-Type'  => 'image/jpg',
+                                   'Slug'          => $filename,
+                               ],
+                               $object->{content},
+                           );
+    }, sub {
+        my $res = shift;
+        (defined $res and $res->is_success) ? 0 : 1;
+    };
+    if ($res and $res->is_success) {
+        infof 'uploaded: %s/%s', $date, $filename;
         return 1;
     } else {
         critf 'failed to upload: %s %s', $res->status_line, $res->decoded_content;
@@ -123,9 +128,15 @@ sub _build_album_list {
 
     my $album_list = {};
 
-    my $res = $self->ua->get('https://picasaweb.google.com/data/feed/api/user/default');
-
-    $res->code eq '200' or croak "failed to get album list: $!: ".$res->code.' '.$res->content;
+    my $res = retry 3, 1, sub {
+        return $self->ua->get('https://picasaweb.google.com/data/feed/api/user/default');
+    }, sub {
+        my $res = shift;
+        (defined $res and $res->is_success) ? 0 : 1;
+    };
+    if (!$res or !$res->is_success) {
+        croak "failed to get album list: $!: ".$res->code.' '.$res->content;
+    }
 
     my $dom = XML::LibXML->load_xml(string => $res->content);
     my $xpc = XML::LibXML::XPathContext->new($dom);

@@ -10,6 +10,7 @@ use Log::Minimal;
 use JSON qw(encode_json decode_json);
 use Furl;
 use Try::Tiny;
+use Sub::Retry;
 use Image::ExifTool;
 
 use DoumekiAir::ModelResponse;
@@ -134,11 +135,16 @@ sub _fetch_filelist {
                       $param->{dir},
                   );
     debugf 'url: %s', $url;
-    my $res = $self->ua->get($url);
-    debugf 'status_line: %s', $res->status_line;
-    if (!$res->is_success) {
+    my $res = retry 3, 1, sub {
+        return $self->ua->get($url);
+    }, sub {
+        my $res = shift;
+        (defined $res and $res->is_success) ? 0 : 1;
+    };
+    if (!$res or !$res->is_success) {
         croakf "failed to get filelist: %s", $res->status_line;
     }
+    debugf 'status_line: %s', $res->status_line;
 
     my @filelist;
     for my $line (split /\r?\n/, $res->decoded_content) {
@@ -234,9 +240,13 @@ sub fetch {
                       $param->{fileinfo}{filename},
                   );
     debugf 'url: %s', $url;
-    my $res = $self->ua->get($url);
-    debugf 'status_line: %s', $res->status_line;
-    if (!$res->is_success) {
+    my $res = retry 3, 1, sub {
+        return $self->ua->get($url);
+    }, sub {
+        my $res = shift;
+        (defined $res and $res->is_success) ? 0 : 1;
+    };
+    if (!$res or !$res->is_success) {
         $mres->add_error({
             field   => 'fetch',
             code    => 'error',
@@ -244,6 +254,7 @@ sub fetch {
         });
         return $mres;
     }
+    debugf 'status_line: %s', $res->status_line;
 
     my $object = {
         %{ $param->{fileinfo} },
