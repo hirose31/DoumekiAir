@@ -57,7 +57,7 @@ sub new {
         %$param,
         %$config,
         ua => Furl->new(
-            timeout => 16,
+            timeout => 200,
         ),
     }, $class;
 
@@ -240,17 +240,21 @@ sub fetch {
                       $param->{fileinfo}{filename},
                   );
     debugf 'url: %s', $url;
-    my $res = retry 3, 1, sub {
+    my $res = retry 8, 2, sub {
         return $self->ua->get($url);
     }, sub {
         my $res = shift;
         (defined $res and $res->is_success) ? 0 : 1;
     };
     if (!$res or !$res->is_success) {
+        my $msg = '999 unknown';
+        if ($res) {
+            $msg = $res->status_line;
+        }
         $mres->add_error({
             field   => 'fetch',
             code    => 'error',
-            message => $res->status_line,
+            message => $msg,
         });
         return $mres;
     }
