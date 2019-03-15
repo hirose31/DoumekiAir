@@ -273,6 +273,12 @@ sub _create_album {
 
 __END__
 
+Migration Guide to Google Photos Library API
+https://developers.google.com/picasa-web/docs/3.0/developers_guide_migration
+
+Google Photos Library API overview
+https://developers.google.com/photos/library/guides/overview
+
 # for Emacsen
 # Local Variables:
 # mode: cperl
