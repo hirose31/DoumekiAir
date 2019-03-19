@@ -1,0 +1,206 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use 5.010_000;
+use utf8;
+
+use IO::File;
+STDOUT->autoflush(1);
+STDERR->autoflush(1);
+use Getopt::Long;
+use Pod::Usage;
+
+use Data::Dumper;
+BEGIN {
+    sub p(@) { ## no critic
+        local $Data::Dumper::Indent    = 1;
+        local $Data::Dumper::Deepcopy  = 1;
+        local $Data::Dumper::Sortkeys  = 1;
+        local $Data::Dumper::Terse     = 1;
+        local $Data::Dumper::Useqq     = 0;
+        local $Data::Dumper::Quotekeys = 0;
+        my $d =  Dumper(\@_);
+        $d    =~ s/\\x\{([0-9a-z]+)\}/chr(hex($1))/ge;
+        print STDERR $d;
+    }
+}
+
+use FindBin;
+use File::Spec;
+use lib map {File::Spec->catfile($FindBin::Bin, @$_)} [qw(.. lib)];
+
+use Data::Validator;
+use Log::Minimal;
+use Carp;
+use File::Basename qw(basename);
+use Image::ExifTool;
+use File::Slurp;
+
+use DoumekiAir;
+
+my $Debug = 0;
+
+MAIN: {
+    my %arg;
+    my $opt_parser = Getopt::Long::Parser->new(config => [qw(posix_default no_ignore_case no_ignore_case_always)]);
+    $opt_parser->getoptions(
+        \%arg,
+        'date|t=s',
+        'debug|d+' => \$Debug,
+        'help|h|?' => sub { pod2usage(-verbose=>1) }) or pod2usage();
+    $ENV{LM_DEBUG} = 1 if $Debug;
+    my $opt_rule = Data::Validator->new(
+        date => { isa => 'Str', default => '' },
+    )->with('NoThrow');
+    my $opt = $opt_rule->validate(%arg);
+    pod2usage(join("\n", map {$_->{message}} @{$opt_rule->clear_errors}))
+        if $opt_rule->has_errors;
+
+    debugf("opt: %s", ddf($opt));
+
+    if ($opt->{date}) {
+        if ($opt->{date} !~ /^\d\d\d\d-\d\d-\d\d$/) {
+            croakf('invlaid date format: %s', $opt->{date});
+        }
+    }
+
+    my @photos = @ARGV;
+    debugf 'photos: %s', join(' ', @photos);
+    my @filelist;
+    my %object;
+
+    for my $photo (@photos) {
+        my $fileinfo = {
+            filename => basename($photo),
+            size => (stat $photo)[7],
+        };
+
+        my $content = read_file($photo, binmode => ':raw');
+        $object{$fileinfo->{filename}}{content} = $content;
+
+        my $datetime;
+        my $exif = Image::ExifTool->ImageInfo(\$content);
+        if ($exif->{DateTimeOriginal}) {
+            my($date, $time) = split /\s+/, $exif->{DateTimeOriginal};
+            $datetime = sprintf '%04d-%02d-%02d %s', (split /[:\/-]/, $date), $time;
+        } elsif ($opt->{date}) {
+            infof 'missing Exif DateTimeOriginal, use -t option value';
+            $datetime = $opt->{date} . ' 00:00:00';
+        }
+        if (!$datetime) {
+            croakf('missing datetime: %s', ddf($fileinfo));
+        }
+        $fileinfo->{datetime} = $datetime;
+        $object{$fileinfo->{filename}}{shoot_datetime} = $datetime;
+
+        my $type;
+        if ($photo =~ /\.jpe?g$/i) {
+            $type = 'image/jpeg';
+        }
+        if (!$type) {
+            croakf('missing type: %s', ddf($fileinfo));
+        }
+        $object{$fileinfo->{filename}}{type} = $type;
+
+        $object{$fileinfo->{filename}} = {
+            %{$object{$fileinfo->{filename}}},
+            %$fileinfo,
+        };
+
+        push @filelist, $fileinfo;
+    }
+
+
+    my $c = DoumekiAir->bootstrap();
+    my $store = $c->model('Store');
+    $store->login();
+
+    my $upm = $c->model('UploadedMemo');
+
+    for my $fileinfo (@filelist) {
+        next unless uploadable($fileinfo);
+        next if $upm->is_uploaded($fileinfo);
+
+        my $mres = $store->store({
+            object => $object{$fileinfo->{filename}},
+        });
+
+        if ($mres->has_errors) {
+            warnf 'failed to fetch and upload: %s', ddf($mres);
+            next;
+        }
+
+        $upm->uploaded($fileinfo);
+    }
+
+    infof 'finished';
+    exit 0;
+}
+
+sub uploadable {
+    my $fileinfo = shift;
+
+    return $fileinfo->{filename} =~ /(?:jpe?g)$/i ? 1 : ();
+}
+
+__END__
+
+=encoding utf-8
+
+=head1 NAME
+
+B<upload-photo> - upload photos
+
+=head1 SYNOPSIS
+
+B<upload-photo>
+[B<-t> YYYY-MM-DD | B<--date> YYYY-MM-DD]
+[B<-d> | B<--debug>]
+file.jpg file.jpg ...
+
+B<upload-photo> B<-h> | B<--help> | B<-?>
+
+  $ PLACK_ENV=production carton exec -- ./upload-photo foo.jpg bar.jpg
+
+=head1 DESCRIPTION
+
+upload photo
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-t> YYYY-MM-DD, B<--date> YYYY-MM-DD
+
+Use this date if missing Exif DateTimeOriginal
+
+=item B<-d>, B<--debug>
+
+increase debug level.
+-d -d more verbosely.
+
+=back
+
+=head1 AUTHOR
+
+HIROSE, Masaaki E<lt>hirose31 _at_ gmail.comE<gt>
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+=cut
+
+# for Emacsen
+# Local Variables:
+# mode: cperl
+# cperl-indent-level: 4
+# cperl-close-paren-offset: -4
+# cperl-indent-parens-as-block: t
+# indent-tabs-mode: nil
+# coding: utf-8
+# End:
+
+# vi: set ts=4 sw=4 sts=0 et ft=perl fenc=utf-8 ff=unix :
