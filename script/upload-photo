@@ -71,6 +71,11 @@ MAIN: {
     my %object;
 
     for my $photo (@photos) {
+        if (not -e $photo) {
+            infof 'SKIP not exist: %s', $photo;
+            next;
+        }
+
         my $fileinfo = {
             filename => basename($photo),
             size => (stat $photo)[7],
@@ -111,6 +116,10 @@ MAIN: {
         push @filelist, $fileinfo;
     }
 
+    unless (@filelist) {
+        infof 'no filelist';
+        exit;
+    }
 
     my $c = DoumekiAir->bootstrap();
     my $store = $c->model('Store');
