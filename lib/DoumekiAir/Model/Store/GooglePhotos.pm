@@ -190,7 +190,7 @@ sub _build_album_list {
 
     my $next_page_token = '';
 
-    for my $i (1..30) {
+    for my $i (1..100) {
         infof 'fetch album %d', $i;
         my $res = retry 3, 1, sub {
             my $url = 'https://photoslibrary.googleapis.com/v1/albums?pageSize=50';
