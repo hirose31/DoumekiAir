@@ -63,7 +63,16 @@ sub notify {
         );
     }, sub {
         my $res = shift;
-        (defined $res and $res->is_success) ? 0 : 1;
+
+        if (!$res) {
+            warnf 'RETRY not HTTP::Response: %s', $@;
+            return 1;
+        } elsif ($res->code =~ /^5/) {
+            warnf 'RETRY %s', $res->status_line;
+            return 1;
+        }
+
+        return;
     };
 
     if (!$res or !$res->is_success) {
