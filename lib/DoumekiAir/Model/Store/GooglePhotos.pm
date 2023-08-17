@@ -54,9 +54,10 @@ sub login {
         client_id     => $self->client_id,
         client_secret => $self->client_secret,
         scope         => [
-'https://www.googleapis.com/auth/photoslibrary',
 'https://www.googleapis.com/auth/photoslibrary.readonly',
 'https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata',
+'https://www.googleapis.com/auth/photoslibrary.appendonly',
+'https://www.googleapis.com/auth/photoslibrary.edit.appcreateddata',
 ],
     );
     my $ow = $oauth2->oauth2_webserver;
