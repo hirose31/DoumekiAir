@@ -1,0 +1,86 @@
+#!/usr/bin/env perl
+
+# token が期限切れしないように定期的にアクセスするスクリプト。
+# cd ~/repos/DoumekiAir/script/ && PLACK_ENV=production carton exec -- ./access-google-photos
+
+use strict;
+use warnings;
+use 5.010_000;
+use utf8;
+
+use IO::File;
+STDOUT->autoflush(1);
+STDERR->autoflush(1);
+use Getopt::Long;
+use Pod::Usage;
+
+use Data::Dumper;
+BEGIN {
+    sub p(@) { ## no critic
+        local $Data::Dumper::Indent    = 1;
+        local $Data::Dumper::Deepcopy  = 1;
+        local $Data::Dumper::Sortkeys  = 1;
+        local $Data::Dumper::Terse     = 1;
+        local $Data::Dumper::Useqq     = 0;
+        local $Data::Dumper::Quotekeys = 0;
+        my $d =  Dumper(\@_);
+        $d    =~ s/\\x\{([0-9a-z]+)\}/chr(hex($1))/ge;
+        print STDERR $d;
+    }
+}
+
+use FindBin;
+use File::Spec;
+use lib map {File::Spec->catfile($FindBin::Bin, @$_)} [qw(.. lib)];
+
+use Data::Validator;
+use Log::Minimal;
+use Carp;
+use File::Basename qw(basename);
+use Image::ExifTool;
+use File::Slurp;
+
+use DoumekiAir;
+
+my $Debug = 0;
+
+MAIN: {
+    my %arg;
+    my $opt_parser = Getopt::Long::Parser->new(config => [qw(posix_default no_ignore_case no_ignore_case_always)]);
+    $opt_parser->getoptions(
+        \%arg,
+        'debug|d+' => \$Debug,
+        'help|h|?' => sub { pod2usage(-verbose=>1) }) or pod2usage();
+    $ENV{LM_DEBUG} = 1 if $Debug;
+    my $opt_rule = Data::Validator->new(
+
+    )->with('NoThrow');
+    my $opt = $opt_rule->validate(%arg);
+    pod2usage(join("\n", map {$_->{message}} @{$opt_rule->clear_errors}))
+        if $opt_rule->has_errors;
+
+    debugf("opt: %s", ddf($opt));
+
+    my $c = DoumekiAir->bootstrap();
+    my $store = $c->model('Store');
+
+    # login の中で _build_album_list するので login を呼ぶだけで OK 。
+    $store->login();
+
+    infof 'finished';
+    exit 0;
+}
+
+__END__
+
+# for Emacsen
+# Local Variables:
+# mode: cperl
+# cperl-indent-level: 4
+# cperl-close-paren-offset: -4
+# cperl-indent-parens-as-block: t
+# indent-tabs-mode: nil
+# coding: utf-8
+# End:
+
+# vi: set ts=4 sw=4 sts=0 et ft=perl fenc=utf-8 ff=unix :
