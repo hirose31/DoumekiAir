@@ -1,5 +1,7 @@
 #!/bin/bash
 
+exec >/tmp/access-google-photos.log 2>&1
+
 set -Euo pipefail
 export LANG="C"
 
